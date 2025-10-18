@@ -1,6 +1,8 @@
-const express = require('express');
+import express from 'express';
+
 const router = express.Router();
 
-// TODO: Implement trading routes
+// TODO: Implement trading routes  
+// We'll add buy/sell simulation here
 
-module.exports = router;
+export default router;

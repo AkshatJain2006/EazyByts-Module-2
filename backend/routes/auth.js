@@ -1,6 +1,8 @@
-const express = require('express');
+import express from 'express';
+
 const router = express.Router();
 
 // TODO: Implement authentication routes
+// We'll add login & signup here
 
-module.exports = router;
+export default router;
