@@ -1,8 +1,9 @@
 import express from 'express';
+import { loginUser, signupUser } from '../controllers/authController.js';
 
 const router = express.Router();
 
-// TODO: Implement authentication routes
-// We'll add login & signup here
+router.post('/signup', signupUser);
+router.post('/login', loginUser);
 
 export default router;
