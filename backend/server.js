@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.js";
 import stockRoutes from "./routes/stocks.js";
 import tradeRoutes from "./routes/trade.js";
 import portfolioRoutes from "./routes/portfolio.js";
+import { startFinnhubRealtime } from './services/stockRealtimeService.js';
 
 dotenv.config();
 
@@ -59,9 +60,10 @@ io.on("connection", (socket) => {
 });
 
 export { io };
-
+startFinnhubRealtime();
 // Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
