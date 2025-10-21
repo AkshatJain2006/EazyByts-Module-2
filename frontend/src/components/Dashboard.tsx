@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
+import { useRealTimeStocks } from '../hooks/useRealTimeStocks';
 
 interface Stock {
   symbol: string;
@@ -38,18 +38,13 @@ const Dashboard: React.FC = () => {
     dayChangePercent: 2.21
   };
 
+  const { isConnected, getAllPrices } = useRealTimeStocks(['AAPL', 'GOOGL', 'TSLA', 'MSFT']);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Use mock data for now
         setStocks(mockStocks);
         setPortfolio(mockPortfolio);
-        
-        // Uncomment when backend is ready
-        // const stockData = await getStocks();
-        // const portfolioData = await getPortfolio();
-        // setStocks(stockData);
-        // setPortfolio(portfolioData);
       } catch (err: any) {
         setError('Failed to load data');
       } finally {
@@ -58,21 +53,28 @@ const Dashboard: React.FC = () => {
     };
 
     fetchData();
+  }, []);
 
-    // Set up Socket.io for real-time updates
-    const socket = io('http://localhost:5000');
-    socket.on('stockUpdate', (updatedStock: Stock) => {
-      setStocks(prevStocks =>
-        prevStocks.map(stock =>
-          stock.symbol === updatedStock.symbol ? updatedStock : stock
-        )
+  // Update stocks with real-time data
+  useEffect(() => {
+    const realTimePrices = getAllPrices();
+    if (realTimePrices.length > 0) {
+      setStocks(prevStocks => 
+        prevStocks.map(stock => {
+          const realTimeData = realTimePrices.find(rtp => rtp.symbol === stock.symbol);
+          if (realTimeData) {
+            const change = realTimeData.price - stock.price;
+            return {
+              ...stock,
+              price: realTimeData.price,
+              change: change
+            };
+          }
+          return stock;
+        })
       );
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [mockStocks, mockPortfolio]);
+    }
+  }, [getAllPrices]);
 
   const filteredStocks = stocks.filter(stock =>
     stock.symbol.toLowerCase().includes(searchTerm.toLowerCase())
@@ -107,7 +109,17 @@ const Dashboard: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-4xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-gray-400">Welcome back! Here's your market overview.</p>
+          <div className="flex items-center space-x-3">
+            <p className="text-gray-400">Welcome back! Here's your market overview.</p>
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm ${
+              isConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                isConnected ? 'bg-green-400' : 'bg-red-400'
+              }`}></div>
+              <span>{isConnected ? 'Live' : 'Offline'}</span>
+            </div>
+          </div>
         </div>
         <div className="mt-4 lg:mt-0">
           <input
