@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -31,22 +31,13 @@ interface StockData {
   currentPrice: number;
   change: number;
   changePercent: number;
-  marketCap: string;
-  pe: number;
-  high52w: number;
-  low52w: number;
 }
 
 const StockCharts: React.FC = () => {
-  const [stocks, setStocks] = useState<string[]>([]);
   const [selectedStock, setSelectedStock] = useState('AAPL');
-  const [stockData, setStockData] = useState<StockData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [timeframe, setTimeframe] = useState<'1D' | '1W' | '1M' | '3M' | '1Y'>('1M');
   const [chartType, setChartType] = useState<'price' | 'volume'>('price');
 
-  // Mock data for demonstration
   const mockStockData: { [key: string]: StockData } = {
     AAPL: {
       symbol: 'AAPL',
@@ -55,24 +46,16 @@ const StockCharts: React.FC = () => {
       dates: ['Jan 1', 'Jan 8', 'Jan 15', 'Jan 22', 'Jan 29', 'Feb 5', 'Feb 12', 'Feb 19', 'Feb 26', 'Mar 5', 'Mar 12', 'Mar 19'],
       currentPrice: 175.43,
       change: 2.15,
-      changePercent: 1.24,
-      marketCap: '2.8T',
-      pe: 28.5,
-      high52w: 198.23,
-      low52w: 124.17
+      changePercent: 1.24
     },
     GOOGL: {
       symbol: 'GOOGL',
-      prices: [2800, 2850, 2900, 2875, 2920, 2890, 2940, 2910, 2880, 2860, 2870, 2847.52],
+      prices: [140, 142, 145, 143, 147, 144, 149, 146, 144, 143, 145, 147.52],
       volumes: [1200000, 1350000, 980000, 1450000, 1100000, 1280000, 1050000, 890000, 1380000, 1150000, 1220000, 1234567],
       dates: ['Jan 1', 'Jan 8', 'Jan 15', 'Jan 22', 'Jan 29', 'Feb 5', 'Feb 12', 'Feb 19', 'Feb 26', 'Mar 5', 'Mar 12', 'Mar 19'],
-      currentPrice: 2847.52,
-      change: -15.23,
-      changePercent: -0.53,
-      marketCap: '1.9T',
-      pe: 24.8,
-      high52w: 3030.93,
-      low52w: 2193.62
+      currentPrice: 147.52,
+      change: -1.23,
+      changePercent: -0.83
     },
     MSFT: {
       symbol: 'MSFT',
@@ -81,58 +64,14 @@ const StockCharts: React.FC = () => {
       dates: ['Jan 1', 'Jan 8', 'Jan 15', 'Jan 22', 'Jan 29', 'Feb 5', 'Feb 12', 'Feb 19', 'Feb 26', 'Mar 5', 'Mar 12', 'Mar 19'],
       currentPrice: 378.85,
       change: 5.67,
-      changePercent: 1.52,
-      marketCap: '2.8T',
-      pe: 32.1,
-      high52w: 384.30,
-      low52w: 309.45
+      changePercent: 1.52
     }
   };
 
-  useEffect(() => {
-    const fetchStocks = async () => {
-      try {
-        // Use mock data for now
-        const stockSymbols = Object.keys(mockStockData);
-        setStocks(stockSymbols);
-        
-        // Uncomment when backend is ready
-        // const data = await getStocks();
-        // setStocks(data.map((stock: any) => stock.symbol));
-        // if (data.length > 0) {
-        //   setSelectedStock(data[0].symbol);
-        // }
-      } catch (err: any) {
-        setError('Failed to load stocks');
-      }
-    };
+  const stocks = Object.keys(mockStockData);
+  const stockData = mockStockData[selectedStock];
 
-    fetchStocks();
-  }, [mockStockData]);
-
-  useEffect(() => {
-    if (selectedStock) {
-      const fetchStockData = async () => {
-        setLoading(true);
-        try {
-          // Use mock data for now
-          setStockData(mockStockData[selectedStock] || null);
-          
-          // Uncomment when backend is ready
-          // const data = await getStockBySymbol(selectedStock);
-          // setStockData(data);
-        } catch (err: any) {
-          setError('Failed to load stock data');
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchStockData();
-    }
-  }, [selectedStock, timeframe, mockStockData]);
-
-  const priceChartData = stockData ? {
+  const priceChartData = {
     labels: stockData.dates,
     datasets: [
       {
@@ -144,9 +83,9 @@ const StockCharts: React.FC = () => {
         fill: true,
       },
     ],
-  } : null;
+  };
 
-  const volumeChartData = stockData ? {
+  const volumeChartData = {
     labels: stockData.dates,
     datasets: [
       {
@@ -157,7 +96,7 @@ const StockCharts: React.FC = () => {
         borderWidth: 1,
       },
     ],
-  } : null;
+  };
 
   const chartOptions = {
     responsive: true,
@@ -189,61 +128,49 @@ const StockCharts: React.FC = () => {
     },
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="glass-effect p-8 rounded-2xl">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <p className="text-white font-medium">Loading chart data...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-6 space-y-8 fade-in">
-      {/* Header */}
+    <div className="container mx-auto p-6 space-y-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-4xl font-bold text-white mb-2">Stock Charts</h1>
-          <p className="text-white/70">Technical analysis and price movements</p>
+          <p className="text-white opacity-70">Technical analysis and price movements</p>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="glass-effect p-6 rounded-2xl">
+      <div className="bg-white bg-opacity-10 backdrop-blur-lg p-6 rounded-2xl">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Stock Selection */}
           <div>
-            <label className="block text-white/90 text-sm font-medium mb-2">Select Stock</label>
+            <label className="block text-white text-sm font-medium mb-2">Select Stock</label>
             <select
               value={selectedStock}
               onChange={(e) => setSelectedStock(e.target.value)}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {stocks.map((stock) => (
-                <option key={stock} value={stock} className="bg-gray-800">
+                <option key={stock} value={stock} className="bg-gray-800 text-white">
                   {stock}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Timeframe Selection */}
           <div>
-            <label className="block text-white/90 text-sm font-medium mb-2">Timeframe</label>
-            <div className="flex space-x-2">
+            <label className="block text-white text-sm font-medium mb-3">Timeframe</label>
+            <div className="grid grid-cols-5 gap-3">
               {(['1D', '1W', '1M', '3M', '1Y'] as const).map((period) => (
                 <button
                   key={period}
                   onClick={() => setTimeframe(period)}
-                  className={`px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                    timeframe === period
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white/10 text-black hover:bg-white/20'
-                  }`}
+                  style={{
+                    backgroundColor: timeframe === period ? '#4f46e5' : '#374151',
+                    borderColor: timeframe === period ? '#4338ca' : '#4b5563',
+                    color: '#ffffff',
+                    borderWidth: '2px',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                  }}
                 >
                   {period}
                 </button>
@@ -251,94 +178,99 @@ const StockCharts: React.FC = () => {
             </div>
           </div>
 
-          {/* Chart Type Selection */}
           <div>
-            <label className="block text-white/90 text-sm font-medium mb-2">Chart Type</label>
-            <div className="flex space-x-2">
+            <label className="block text-white text-sm font-medium mb-3">Chart Type</label>
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setChartType('price')}
-                className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                  chartType === 'price'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white/10 text-white/70 hover:bg-white/20'
-                }`}
+                style={{
+                  backgroundColor: chartType === 'price' ? '#059669' : '#374151',
+                  borderColor: chartType === 'price' ? '#047857' : '#4b5563',
+                  color: '#ffffff',
+                  borderWidth: '2px',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  fontWeight: '600',
+                  fontSize: '14px'
+                }}
               >
-                Price
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: '#ffffff' }}>Price Chart</span>
+                  <span style={{ color: '#ffffff', fontSize: '12px', opacity: 0.75 }}>Line graph</span>
+                </div>
               </button>
               <button
                 onClick={() => setChartType('volume')}
-                className={`px-4 py-2 rounded-lg transition-all duration-200 ${
-                  chartType === 'volume'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white/10 text-white/70 hover:bg-white/20'
-                }`}
+                style={{
+                  backgroundColor: chartType === 'volume' ? '#d97706' : '#374151',
+                  borderColor: chartType === 'volume' ? '#b45309' : '#4b5563',
+                  color: '#ffffff',
+                  borderWidth: '2px',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  fontWeight: '600',
+                  fontSize: '14px'
+                }}
               >
-                Volume
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: '#ffffff' }}>Volume Chart</span>
+                  <span style={{ color: '#ffffff', fontSize: '12px', opacity: 0.75 }}>Bar graph</span>
+                </div>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {error && (
-        <div className="glass-effect p-6 rounded-2xl border border-red-500/30">
-          <p className="text-red-100">{error}</p>
-        </div>
-      )}
-
-      {stockData && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Stock Info */}
-          <div className="glass-effect p-6 rounded-2xl">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-xl">{stockData.symbol.charAt(0)}</span>
-              </div>
-              <h2 className="text-2xl font-bold text-white">{stockData.symbol}</h2>
-              <p className="text-3xl font-bold text-white mt-2">${stockData.currentPrice.toFixed(2)}</p>
-              <p className={`text-lg font-medium ${
-                stockData.change >= 0 ? 'text-green-400' : 'text-red-400'
-              }`}>
-                {stockData.change >= 0 ? '+' : ''}${stockData.change.toFixed(2)} ({stockData.changePercent >= 0 ? '+' : ''}{stockData.changePercent.toFixed(2)}%)
-              </p>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="bg-white bg-opacity-10 backdrop-blur-lg p-6 rounded-2xl">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="text-white font-bold text-xl">{stockData.symbol.charAt(0)}</span>
             </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-white/70">Market Cap</span>
-                <span className="text-white font-medium">{stockData.marketCap}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/70">P/E Ratio</span>
-                <span className="text-white font-medium">{stockData.pe.toFixed(1)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/70">52W High</span>
-                <span className="text-white font-medium">${stockData.high52w.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/70">52W Low</span>
-                <span className="text-white font-medium">${stockData.low52w.toFixed(2)}</span>
-              </div>
-            </div>
+            <h2 className="text-2xl font-bold text-white">{stockData.symbol}</h2>
+            <p className="text-3xl font-bold text-white mt-2">${stockData.currentPrice.toFixed(2)}</p>
+            <p className={`text-lg font-medium ${
+              stockData.change >= 0 ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {stockData.change >= 0 ? '+' : ''}${stockData.change.toFixed(2)} ({stockData.changePercent >= 0 ? '+' : ''}{stockData.changePercent.toFixed(2)}%)
+            </p>
           </div>
 
-          {/* Chart */}
-          <div className="lg:col-span-3 glass-effect p-6 rounded-2xl">
-            <h3 className="text-xl font-semibold text-white mb-6">
-              {stockData.symbol} {chartType === 'price' ? 'Price Chart' : 'Volume Chart'}
-            </h3>
-            <div className="h-96">
-              {chartType === 'price' && priceChartData && (
-                <Line data={priceChartData} options={chartOptions} />
-              )}
-              {chartType === 'volume' && volumeChartData && (
-                <Bar data={volumeChartData} options={chartOptions} />
-              )}
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-white opacity-70">Timeframe</span>
+              <span className="text-white font-medium">{timeframe}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white opacity-70">Data Points</span>
+              <span className="text-white font-medium">{stockData.prices.length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white opacity-70">High</span>
+              <span className="text-white font-medium">${Math.max(...stockData.prices).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white opacity-70">Low</span>
+              <span className="text-white font-medium">${Math.min(...stockData.prices).toFixed(2)}</span>
             </div>
           </div>
         </div>
-      )}
+
+        <div className="lg:col-span-3 bg-white bg-opacity-10 backdrop-blur-lg p-6 rounded-2xl">
+          <h3 className="text-xl font-semibold text-white mb-6">
+            {stockData.symbol} {chartType === 'price' ? 'Price Chart' : 'Volume Chart'}
+          </h3>
+          <div className="h-96">
+            {chartType === 'price' && (
+              <Line data={priceChartData} options={chartOptions} />
+            )}
+            {chartType === 'volume' && (
+              <Bar data={volumeChartData} options={chartOptions} />
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

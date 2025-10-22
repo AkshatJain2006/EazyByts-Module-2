@@ -20,36 +20,45 @@ export const useRealTimeStocks = (symbols: string[] = []) => {
   const [isConnected, setIsConnected] = useState(false);
 
   const handleStockUpdate = useCallback((data: StockUpdate[]) => {
-    setStockPrices(prev => {
-      const newPrices = new Map(prev);
-      
-      data.forEach(update => {
-        if (symbols.length === 0 || symbols.includes(update.s)) {
-          newPrices.set(update.s, {
-            symbol: update.s,
-            price: update.p,
-            timestamp: update.t,
-            volume: update.v
-          });
-        }
+    try {
+      setStockPrices(prev => {
+        const newPrices = new Map(prev);
+        
+        data.forEach(update => {
+          if (symbols.length === 0 || symbols.includes(update.s)) {
+            newPrices.set(update.s, {
+              symbol: update.s,
+              price: update.p,
+              timestamp: update.t,
+              volume: update.v
+            });
+          }
+        });
+        
+        return newPrices;
       });
-      
-      return newPrices;
-    });
+    } catch (error) {
+      console.log('Error updating stock prices:', error);
+    }
   }, [symbols]);
 
   useEffect(() => {
+    let isMounted = true;
+    
     socketService.connect();
     socketService.on('stockUpdate', handleStockUpdate);
     
     const checkConnection = () => {
-      setIsConnected(socketService.isConnected());
+      if (isMounted) {
+        setIsConnected(socketService.isConnected());
+      }
     };
     
     checkConnection();
     const interval = setInterval(checkConnection, 1000);
 
     return () => {
+      isMounted = false;
       socketService.off('stockUpdate', handleStockUpdate);
       clearInterval(interval);
     };

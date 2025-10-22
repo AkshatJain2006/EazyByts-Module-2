@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { mockTradingStore } from '../utils/mockTradingStore';
+import { useRealTimeStocks } from '../hooks/useRealTimeStocks';
+import axios from 'axios';
 
 interface Stock {
   symbol: string;
@@ -29,41 +30,54 @@ const TradingInterface: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
-  const [balance, setBalance] = useState(mockTradingStore.getBalance());
+  const [balance, setBalance] = useState(0);
 
-  // Mock Indian stocks data
-  const mockStocks: Stock[] = [
-    { symbol: 'RELIANCE', price: 2850.75, change: 45.20, volume: 8234567 },
-    { symbol: 'TCS', price: 3650.20, change: -25.80, volume: 1534567 },
-    { symbol: 'INFY', price: 1485.60, change: 18.45, volume: 4356789 },
-    { symbol: 'HDFC', price: 1620.40, change: -12.30, volume: 2654321 },
-    { symbol: 'ICICI', price: 950.85, change: 8.75, volume: 5456789 },
-    { symbol: 'BHARTI', price: 875.30, change: 15.60, volume: 3234567 },
-    { symbol: 'ITC', price: 425.15, change: -3.25, volume: 7654321 },
-    { symbol: 'SBIN', price: 580.90, change: 12.40, volume: 6789012 },
-  ];
+  const symbols = stocks.map(s => s.symbol);
+  const { getPrice } = useRealTimeStocks(symbols);
 
 
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Use mock data for now
-        setStocks(mockStocks);
-        setRecentTrades(mockTradingStore.getTrades().slice(0, 5));
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Please log in to access trading');
+          return;
+        }
+
+        // Fetch stocks
+        const stocksResponse = await axios.get('http://localhost:5000/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA');
         
-        // Uncomment when backend is ready
-        // const stockData = await getStocks();
-        // const tradeData = await getTradeHistory();
-        // setStocks(stockData);
-        // setRecentTrades(tradeData);
+        // Transform Finnhub data to expected format
+        const symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'NVDA'];
+        const transformedStocks = stocksResponse.data.data.map((stock: any, index: number) => ({
+          symbol: symbols[index],
+          price: stock.c,
+          change: stock.d,
+          volume: Math.floor(Math.random() * 50000000)
+        }));
+        
+        setStocks(transformedStocks);
+
+        // Fetch portfolio for balance
+        const portfolioResponse = await axios.get('http://localhost:5000/api/portfolio', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setBalance(portfolioResponse.data.balance);
+
+        // Fetch recent trades
+        const tradesResponse = await axios.get('http://localhost:5000/api/trade/history', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setRecentTrades(tradesResponse.data.slice(0, 5));
       } catch (err: any) {
-        setError('Failed to load data');
+        setError(err.response?.data?.message || 'Failed to load data');
       }
     };
 
     fetchData();
-  }, [mockStocks]);
+  }, []);
 
   const handleTrade = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,42 +98,47 @@ const TradingInterface: React.FC = () => {
 
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      let success = false;
-      if (action === 'buy') {
-        success = mockTradingStore.buyStock(selectedStock, quantity, tradePrice);
-        if (success) {
-          setSuccess(`Successfully bought ${quantity} shares of ${selectedStock} for $${totalCost.toFixed(2)}`);
-        } else {
-          setError('Insufficient balance for this trade');
-        }
-      } else {
-        success = mockTradingStore.sellStock(selectedStock, quantity, tradePrice);
-        if (success) {
-          setSuccess(`Successfully sold ${quantity} shares of ${selectedStock} for $${totalCost.toFixed(2)}`);
-        } else {
-          setError('Insufficient shares to sell');
-        }
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please log in to trade');
+        setLoading(false);
+        return;
       }
+
+      const response = await axios.post('http://localhost:5000/api/trade/buy', {
+        symbol: selectedStock,
+        quantity,
+        price: tradePrice
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setSuccess(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} shares of ${selectedStock} for $${totalCost.toFixed(2)}`);
       
-      if (success) {
-        setBalance(mockTradingStore.getBalance());
-        setRecentTrades(mockTradingStore.getTrades().slice(0, 5));
-        setQuantity(1);
-        setLimitPrice('');
-      }
+      // Refresh data
+      const portfolioResponse = await axios.get('http://localhost:5000/api/portfolio', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setBalance(portfolioResponse.data.balance);
+
+      const tradesResponse = await axios.get('http://localhost:5000/api/trade/history', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRecentTrades(tradesResponse.data.slice(0, 5));
+      
+      setQuantity(1);
+      setLimitPrice('');
     } catch (err: any) {
-      setError('Trade failed');
+      setError(err.response?.data?.message || 'Trade failed');
     } finally {
       setLoading(false);
     }
   };
 
   const selectedStockData = stocks.find(stock => stock.symbol === selectedStock);
-  const totalCost = selectedStockData ? 
-    (orderType === 'market' ? selectedStockData.price : parseFloat(limitPrice) || 0) * quantity : 0;
+  const realTimeData = getPrice(selectedStock);
+  const currentPrice = selectedStockData ? (realTimeData?.price || selectedStockData.price) : 0;
+  const totalCost = orderType === 'market' ? currentPrice * quantity : (parseFloat(limitPrice) || 0) * quantity;
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 fade-in">
@@ -167,7 +186,7 @@ const TradingInterface: React.FC = () => {
                   <option value="" style={{ backgroundColor: '#1f2937', color: 'white' }}>Select a stock</option>
                   {stocks.map((stock) => (
                     <option key={stock.symbol} value={stock.symbol} style={{ backgroundColor: '#1f2937', color: 'white' }}>
-                      {stock.symbol} - ₹{stock.price.toFixed(2)} ({stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)})
+                      {stock.symbol} - ${(getPrice(stock.symbol)?.price || stock.price).toFixed(2)} ({stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)})
                     </option>
                   ))}
                 </select>
@@ -205,24 +224,30 @@ const TradingInterface: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setOrderType('market')}
-                    className={`p-3 rounded-xl border-2 transition-all duration-200 font-medium ${
+                    className={`p-4 rounded-2xl border-2 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105 ${
                       orderType === 'market'
-                        ? 'border-indigo-500 bg-indigo-500 text-white'
-                        : 'border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        ? 'order-type-market shadow-blue-500/25'
+                        : 'order-type-inactive'
                     }`}
                   >
-                    Market Order
+                    <div className="flex flex-col items-center space-y-1">
+                      <span>Market Order</span>
+                      <span className="text-xs opacity-75">Instant execution</span>
+                    </div>
                   </button>
                   <button
                     type="button"
                     onClick={() => setOrderType('limit')}
-                    className={`p-3 rounded-xl border-2 transition-all duration-200 font-medium ${
+                    className={`p-4 rounded-2xl border-2 transition-all duration-300 font-semibold text-sm shadow-lg hover:shadow-xl transform hover:scale-105 ${
                       orderType === 'limit'
-                        ? 'border-indigo-500 bg-indigo-500 text-white'
-                        : 'border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        ? 'order-type-limit shadow-orange-500/25'
+                        : 'order-type-inactive'
                     }`}
                   >
-                    Limit Order
+                    <div className="flex flex-col items-center space-y-1">
+                      <span>Limit Order</span>
+                      <span className="text-xs opacity-75">Set your price</span>
+                    </div>
                   </button>
                 </div>
               </div>
@@ -271,7 +296,7 @@ const TradingInterface: React.FC = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-white/70">Current Price:</span>
-                      <span className="text-white">${selectedStockData.price.toFixed(2)}</span>
+                      <span className="text-white">${currentPrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-white/70">Quantity:</span>

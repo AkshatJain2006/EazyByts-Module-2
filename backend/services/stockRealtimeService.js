@@ -6,9 +6,14 @@ dotenv.config();
 
 const finnhubSocketUrl = `wss://ws.finnhub.io?token=${process.env.STOCK_API_KEY}`;
 
-const subscribedSymbols = ['AAPL', 'GOOGL', 'TSLA', 'MSFT'];
+const subscribedSymbols = ['AAPL', 'GOOGL', 'TSLA', 'MSFT', 'AMZN', 'NVDA'];
 
 export function startFinnhubRealtime() {
+  if (!process.env.STOCK_API_KEY || process.env.STOCK_API_KEY === 'your_stock_api_key_here') {
+    console.log('Finnhub API key not configured. Real-time data disabled.');
+    return;
+  }
+
   const ws = new WebSocket(finnhubSocketUrl);
 
   ws.on('open', () => {
@@ -30,10 +35,10 @@ export function startFinnhubRealtime() {
 
   ws.on('close', () => {
     console.log('Finnhub WebSocket disconnected');
-    // Optionally attempt reconnect or alert system
   });
 
   ws.on('error', (error) => {
     console.error('Finnhub WebSocket error:', error);
+    console.log('Note: Get a free API key from https://finnhub.io/register');
   });
 }

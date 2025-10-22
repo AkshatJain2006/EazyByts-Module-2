@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
+import axios from 'axios';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -45,45 +46,60 @@ const Analytics: React.FC = () => {
   const [error, setError] = useState('');
   const [timeframe, setTimeframe] = useState<'1M' | '3M' | '6M' | '1Y'>('3M');
 
-  // Mock data for demonstration
-  const mockAnalytics: AnalyticsData = {
-    portfolioValue: [45000, 47500, 46800, 49200, 51000, 48500, 52300, 54100, 53200, 55800, 57200, 59500],
-    dates: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    performance: 24.5,
-    monthlyReturns: [2.1, 5.6, -1.5, 5.1, 3.7, -4.9, 7.8, 3.4, -1.7, 4.9, 2.5, 4.0],
-    sectorAllocation: [
-      { sector: 'Technology', percentage: 45, value: 28350 },
-      { sector: 'Healthcare', percentage: 20, value: 12600 },
-      { sector: 'Finance', percentage: 15, value: 9450 },
-      { sector: 'Consumer', percentage: 12, value: 7560 },
-      { sector: 'Energy', percentage: 8, value: 5040 }
-    ],
-    riskMetrics: {
-      sharpeRatio: 1.45,
-      volatility: 18.2,
-      maxDrawdown: -8.5,
-      beta: 1.12
-    }
-  };
+
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchAnalytics = async () => {
       try {
-        // Use mock data for now
-        setAnalytics(mockAnalytics);
-        
-        // Uncomment when backend is ready
-        // const data = await getAnalytics();
-        // setAnalytics(data);
+        if (isMounted) {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            setError('Please log in to view analytics');
+            setLoading(false);
+            return;
+          }
+
+          // Analytics endpoint doesn't exist yet, use mock data
+          const mockAnalytics = {
+            portfolioValue: [45000, 47500, 46800, 49200, 51000, 48500, 52300, 54100, 53200, 55800, 57200, 59500],
+            dates: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            performance: 24.5,
+            monthlyReturns: [2.1, 5.6, -1.5, 5.1, 3.7, -4.9, 7.8, 3.4, -1.7, 4.9, 2.5, 4.0],
+            sectorAllocation: [
+              { sector: 'Technology', percentage: 45, value: 28350 },
+              { sector: 'Healthcare', percentage: 20, value: 12600 },
+              { sector: 'Finance', percentage: 15, value: 9450 },
+              { sector: 'Consumer', percentage: 12, value: 7560 },
+              { sector: 'Energy', percentage: 8, value: 5040 }
+            ],
+            riskMetrics: {
+              sharpeRatio: 1.45,
+              volatility: 18.2,
+              maxDrawdown: -8.5,
+              beta: 1.12
+            }
+          };
+          setAnalytics(mockAnalytics);
+        }
       } catch (err: any) {
-        setError('Failed to load analytics');
+        if (isMounted) {
+          setError(err.response?.data?.message || 'Failed to load analytics');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchAnalytics();
-  }, [timeframe, mockAnalytics]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [timeframe]);
 
   if (loading) {
     return (
@@ -224,10 +240,10 @@ const Analytics: React.FC = () => {
               <button
                 key={period}
                 onClick={() => setTimeframe(period)}
-                className={`px-4 py-2 rounded-xl border-2 transition-all duration-200 font-medium ${
+                className={`px-4 py-3 rounded-xl text-base font-bold transition-all duration-300 transform hover:scale-105 shadow-lg border-2 ${
                   timeframe === period
-                    ? 'border-indigo-500 bg-indigo-500 text-white'
-                    : 'border-gray-600 bg-gray-800 text-black hover:bg-gray-700 hover:text-white'
+                    ? 'timeframe-active shadow-indigo-500/25 border-indigo-500 bg-indigo-600 text-white'
+                    : 'timeframe-inactive border-white/20 bg-white/10 text-white hover:bg-white/20'
                 }`}
               >
                 {period}

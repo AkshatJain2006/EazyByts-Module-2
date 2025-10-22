@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const baseURL = process.env.STOCK_API_URL || 'https://finnhub.io/api/v1';
+const baseURL = process.env.STOCK_API_URL || 'https://api.finnhub.io/api/v1';
 const apiKey = process.env.STOCK_API_KEY;
 
 // Get live quote for a single symbol

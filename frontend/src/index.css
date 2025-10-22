@@ -145,6 +145,113 @@ body {
   color: rgba(255, 255, 255, 0.5);
 }
 
+/* Force input text visibility */
+input[type="text"], input[type="email"], input[type="password"] {
+  background: #1f2937 !important;
+  color: #ffffff !important;
+  border: 1px solid #6b7280 !important;
+}
+
+input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+  background: #111827 !important;
+  border-color: #10b981 !important;
+  outline: none !important;
+}
+
+/* Force button visibility */
+button[type="submit"] {
+  background: linear-gradient(135deg, #9333ea 0%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+/* Trading order type buttons */
+.order-type-market {
+  background: linear-gradient(135deg, #2563eb 0%, #0891b2 100%) !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.order-type-limit {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%) !important;
+  border-color: #f97316 !important;
+  color: #ffffff !important;
+}
+
+/* Force inactive order type buttons to have dark background and light text */
+.order-type-inactive {
+  background: #1f2937 !important;
+  border-color: #4b5563 !important;
+  color: #d1d5db !important;
+}
+
+.order-type-inactive:hover {
+  background: #374151 !important;
+  border-color: #6b7280 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Chart timeframe buttons */
+.timeframe-active {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  border-color: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+.timeframe-inactive {
+  background: #1f2937 !important;
+  border-color: #4b5563 !important;
+  color: #d1d5db !important;
+}
+
+.timeframe-inactive:hover {
+  background: #374151 !important;
+  border-color: #6b7280 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Chart type buttons */
+.chart-type-price {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%) !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+}
+
+.chart-type-volume {
+  background: linear-gradient(135deg, #d97706 0%, #ea580c 100%) !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+}
+
+.chart-type-inactive {
+  background: #1f2937 !important;
+  border-color: #4b5563 !important;
+  color: #d1d5db !important;
+}
+
+.chart-type-inactive:hover {
+  background: #374151 !important;
+  border-color: #6b7280 !important;
+  color: #f3f4f6 !important;
+}
+
+/* Fix placeholder text visibility */
+input::placeholder {
+  color: #000000 !important;
+}
+
+/* Fix select dropdown visibility */
+select {
+  background: #111827 !important;
+  color: #ffffff !important;
+  border: 1px solid #4b5563 !important;
+}
+
+select option {
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
 /* Navigation */
 .navbar {
   background: rgba(30, 41, 59, 0.95);

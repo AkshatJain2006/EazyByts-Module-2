@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { mockTradingStore } from '../utils/mockTradingStore';
+import React, { useState } from 'react';
 
 interface Holding {
   symbol: string;
@@ -12,63 +11,44 @@ interface Holding {
 }
 
 const Portfolio: React.FC = () => {
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [totalValue, setTotalValue] = useState(0);
-  const [totalGainLoss, setTotalGainLoss] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState<'value' | 'gainLoss' | 'symbol'>('value');
 
-  const mockStocks: { [key: string]: number } = {
-    'RELIANCE': 2850.75,
-    'TCS': 3650.20,
-    'INFY': 1485.60,
-    'HDFC': 1620.40,
-    'ICICI': 950.85,
-    'BHARTI': 875.30,
-    'ITC': 425.15,
-    'SBIN': 580.90,
-    'HIND_UNILEVER': 2420.65,
-    'BAJAJ_FINANCE': 6850.40
-  };
+  // Mock portfolio data
+  const mockHoldings: Holding[] = [
+    {
+      symbol: 'AAPL',
+      quantity: 10,
+      averagePrice: 150.00,
+      currentPrice: 175.43,
+      totalValue: 1754.30,
+      gainLoss: 254.30,
+      gainLossPercent: 16.95
+    },
+    {
+      symbol: 'GOOGL',
+      quantity: 5,
+      averagePrice: 140.00,
+      currentPrice: 147.52,
+      totalValue: 737.60,
+      gainLoss: 37.60,
+      gainLossPercent: 5.37
+    },
+    {
+      symbol: 'MSFT',
+      quantity: 8,
+      averagePrice: 350.00,
+      currentPrice: 378.85,
+      totalValue: 3030.80,
+      gainLoss: 230.80,
+      gainLossPercent: 8.24
+    }
+  ];
 
-  useEffect(() => {
-    const fetchPortfolio = async () => {
-      try {
-        const storeHoldings = mockTradingStore.getHoldings();
-        const portfolioHoldings: Holding[] = storeHoldings.map(h => {
-          const currentPrice = mockStocks[h.symbol] || h.averagePrice;
-          const totalValue = h.quantity * currentPrice;
-          const gainLoss = totalValue - (h.quantity * h.averagePrice);
-          const gainLossPercent = ((currentPrice - h.averagePrice) / h.averagePrice) * 100;
-          
-          return {
-            symbol: h.symbol,
-            quantity: h.quantity,
-            averagePrice: h.averagePrice,
-            currentPrice,
-            totalValue,
-            gainLoss,
-            gainLossPercent
-          };
-        });
-        
-        setHoldings(portfolioHoldings);
-        const total = portfolioHoldings.reduce((sum, holding) => sum + holding.totalValue, 0);
-        const totalGain = portfolioHoldings.reduce((sum, holding) => sum + holding.gainLoss, 0);
-        setTotalValue(total);
-        setTotalGainLoss(totalGain);
-      } catch (err: any) {
-        setError('Failed to load portfolio');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const balance = 5000;
+  const totalValue = mockHoldings.reduce((sum, holding) => sum + holding.totalValue, 0) + balance;
+  const totalGainLoss = mockHoldings.reduce((sum, holding) => sum + holding.gainLoss, 0);
 
-    fetchPortfolio();
-  }, [mockStocks]);
-
-  const sortedHoldings = [...holdings].sort((a, b) => {
+  const sortedHoldings = [...mockHoldings].sort((a, b) => {
     switch (sortBy) {
       case 'value':
         return b.totalValue - a.totalValue;
@@ -81,34 +61,8 @@ const Portfolio: React.FC = () => {
     }
   });
 
-
-
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="modern-card p-8">
-            <div className="loading-spinner mx-auto mb-4"></div>
-            <p className="text-white font-medium">Loading portfolio...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="modern-card p-6 bg-danger">
-          <p className="text-red-100">{error}</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 fade-in">
-      {/* Header */}
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold text-white mb-2">Portfolio</h1>
@@ -117,46 +71,43 @@ const Portfolio: React.FC = () => {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'value' | 'gainLoss' | 'symbol')}
-          className="modern-input"
+          className="px-4 py-2 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-lg text-white"
         >
-          <option value="value">Sort by Value</option>
-          <option value="gainLoss">Sort by Gain/Loss</option>
-          <option value="symbol">Sort by Symbol</option>
+          <option value="value" className="bg-gray-800">Sort by Value</option>
+          <option value="gainLoss" className="bg-gray-800">Sort by Gain/Loss</option>
+          <option value="symbol" className="bg-gray-800">Sort by Symbol</option>
         </select>
       </div>
 
-      {/* Summary Cards */}
-      <div className="stats-grid">
-        <div className="modern-card p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white bg-opacity-10 backdrop-blur-lg p-6 rounded-2xl">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-gray-400 text-sm font-medium mb-1">Total Value</p>
+              <p className="text-gray-400 text-sm font-medium mb-1">Total Portfolio Value</p>
               <p className="text-3xl font-bold text-white">${totalValue.toLocaleString()}</p>
+              <p className="text-sm text-gray-400 mt-1">Cash: ${balance.toLocaleString()}</p>
             </div>
-
           </div>
         </div>
         
-        <div className="modern-card p-6">
+        <div className="bg-white bg-opacity-10 backdrop-blur-lg p-6 rounded-2xl">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <p className="text-gray-400 text-sm font-medium mb-1">Total Gain/Loss</p>
-              <p className={`text-3xl font-bold ${totalGainLoss >= 0 ? 'text-success' : 'text-danger'}`}>
+              <p className={`text-3xl font-bold ${totalGainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {totalGainLoss >= 0 ? '+' : ''}${totalGainLoss.toLocaleString()}
               </p>
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* Holdings Table */}
-      <div className="modern-card p-6">
+      <div className="bg-white bg-opacity-10 backdrop-blur-lg p-6 rounded-2xl">
         <h3 className="text-xl font-semibold text-white mb-6">Holdings</h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10">
+              <tr className="border-b border-white border-opacity-10">
                 <th className="text-left py-4 px-6 text-gray-400 font-medium">Stock</th>
                 <th className="text-left py-4 px-6 text-gray-400 font-medium">Shares</th>
                 <th className="text-left py-4 px-6 text-gray-400 font-medium">Avg Price</th>
@@ -167,7 +118,7 @@ const Portfolio: React.FC = () => {
             </thead>
             <tbody>
               {sortedHoldings.map((holding) => (
-                <tr key={holding.symbol} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                <tr key={holding.symbol} className="border-b border-white border-opacity-5 hover:bg-white hover:bg-opacity-5 transition-colors">
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -191,10 +142,10 @@ const Portfolio: React.FC = () => {
                     ${holding.totalValue.toLocaleString()}
                   </td>
                   <td className="py-4 px-6 text-left">
-                    <div className={`font-medium ${holding.gainLoss >= 0 ? 'text-success' : 'text-danger'}`}>
+                    <div className={`font-medium ${holding.gainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {holding.gainLoss >= 0 ? '+' : ''}${holding.gainLoss.toFixed(2)}
                     </div>
-                    <div className={`text-sm ${holding.gainLoss >= 0 ? 'text-success' : 'text-danger'}`}>
+                    <div className={`text-sm ${holding.gainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       ({holding.gainLossPercent >= 0 ? '+' : ''}{holding.gainLossPercent.toFixed(2)}%)
                     </div>
                   </td>

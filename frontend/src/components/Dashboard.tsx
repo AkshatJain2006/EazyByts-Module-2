@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRealTimeStocks } from '../hooks/useRealTimeStocks';
+import axios from 'axios';
 
 interface Stock {
   symbol: string;
@@ -22,59 +23,122 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Mock Indian stocks data
+
+
+  // Mock data fallback
   const mockStocks: Stock[] = [
-    { symbol: 'RELIANCE', price: 2850.75, change: 45.20, volume: 8234567, marketCap: '15.2L Cr' },
-    { symbol: 'TCS', price: 3650.20, change: -25.80, volume: 1534567, marketCap: '13.4L Cr' },
-    { symbol: 'INFY', price: 1485.60, change: 18.45, volume: 4356789, marketCap: '6.2L Cr' },
-    { symbol: 'HDFC', price: 1620.40, change: -12.30, volume: 2654321, marketCap: '8.9L Cr' },
-    { symbol: 'ICICI', price: 950.85, change: 8.75, volume: 5456789, marketCap: '6.7L Cr' },
-    { symbol: 'BHARTI', price: 875.30, change: 15.60, volume: 3234567, marketCap: '4.8L Cr' }
+    { symbol: 'AAPL', price: 175.43, change: 2.15, volume: 45234567, marketCap: '2.8T' },
+    { symbol: 'GOOGL', price: 147.52, change: -1.23, volume: 1234567, marketCap: '1.9T' },
+    { symbol: 'MSFT', price: 378.85, change: 5.67, volume: 23456789, marketCap: '2.8T' },
+    { symbol: 'TSLA', price: 248.50, change: -8.32, volume: 34567890, marketCap: '789B' },
+    { symbol: 'AMZN', price: 145.67, change: 3.21, volume: 12345678, marketCap: '1.5T' },
+    { symbol: 'NVDA', price: 456.78, change: 12.45, volume: 56789012, marketCap: '1.1T' }
   ];
 
   const mockPortfolio: PortfolioSummary = {
-    totalValue: 8542150.50,
-    dayChange: 184732.50,
+    totalValue: 85421.50,
+    dayChange: 1847.32,
     dayChangePercent: 2.21
   };
 
-  const { isConnected, getAllPrices } = useRealTimeStocks(['AAPL', 'GOOGL', 'TSLA', 'MSFT']);
+  const symbols = stocks.map(s => s.symbol);
+  const { isConnected, getPrice } = useRealTimeStocks(symbols);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
       try {
-        setStocks(mockStocks);
-        setPortfolio(mockPortfolio);
+        if (isMounted) {
+          try {
+            // Try to fetch from backend first
+            const stocksResponse = await axios.get('http://localhost:5000/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA');
+            
+            // Transform Finnhub data to expected format
+            const symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'NVDA'];
+            const transformedStocks = stocksResponse.data.data.map((stock: any, index: number) => ({
+              symbol: symbols[index],
+              price: stock.c, // current price
+              change: stock.d, // change
+              volume: Math.floor(Math.random() * 50000000), // mock volume since not in response
+              marketCap: ['2.8T', '1.9T', '2.8T', '789B', '1.5T', '1.1T'][index]
+            }));
+            
+            setStocks(transformedStocks);
+
+            // Fetch portfolio summary if user is logged in
+            const token = localStorage.getItem('token');
+            if (token) {
+              try {
+                const portfolioResponse = await axios.get('http://localhost:5000/api/portfolio', {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                // Transform portfolio data to summary format
+                const portfolio = portfolioResponse.data;
+                const totalHoldingsValue = portfolio.holdings.reduce((sum: number, h: any) => sum + (h.quantity * h.averagePrice), 0);
+                const totalValue = totalHoldingsValue + portfolio.balance;
+                
+                setPortfolio({
+                  totalValue,
+                  dayChange: totalValue * 0.02, // mock 2% change
+                  dayChangePercent: 2.0
+                });
+              } catch (portfolioErr) {
+                // Portfolio fetch failed, use mock data
+                setPortfolio(mockPortfolio);
+              }
+            }
+          } catch (backendErr) {
+            // Backend not available, use mock data
+            console.log('Backend not available, using mock data');
+            setStocks(mockStocks);
+            const token = localStorage.getItem('token');
+            if (token) {
+              setPortfolio(mockPortfolio);
+            }
+          }
+        }
       } catch (err: any) {
-        setError('Failed to load data');
+        if (isMounted) {
+          // Fallback to mock data on any error
+          setStocks(mockStocks);
+          const token = localStorage.getItem('token');
+          if (token) {
+            setPortfolio(mockPortfolio);
+          }
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Update stocks with real-time data
   useEffect(() => {
-    const realTimePrices = getAllPrices();
-    if (realTimePrices.length > 0) {
-      setStocks(prevStocks => 
-        prevStocks.map(stock => {
-          const realTimeData = realTimePrices.find(rtp => rtp.symbol === stock.symbol);
-          if (realTimeData) {
-            const change = realTimeData.price - stock.price;
-            return {
-              ...stock,
-              price: realTimeData.price,
-              change: change
-            };
-          }
-          return stock;
-        })
-      );
-    }
-  }, [getAllPrices]);
+    setStocks(prevStocks => 
+      prevStocks.map(stock => {
+        const realTimeData = getPrice(stock.symbol);
+        if (realTimeData && realTimeData.price !== stock.price) {
+          const change = realTimeData.price - stock.price;
+          return {
+            ...stock,
+            price: realTimeData.price,
+            change: change
+          };
+        }
+        return stock;
+      })
+    );
+  }, [getPrice]);
 
   const filteredStocks = stocks.filter(stock =>
     stock.symbol.toLowerCase().includes(searchTerm.toLowerCase())
@@ -139,7 +203,7 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm font-medium mb-1">Portfolio Value</p>
-                <p className="text-3xl font-bold text-white">₹{portfolio.totalValue.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-white">${portfolio.totalValue.toLocaleString()}</p>
               </div>
 
             </div>
@@ -150,7 +214,7 @@ const Dashboard: React.FC = () => {
               <div>
                 <p className="text-gray-400 text-sm font-medium mb-1">Day Change</p>
                 <p className={`text-3xl font-bold ${portfolio.dayChange >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {portfolio.dayChange >= 0 ? '+' : ''}₹{portfolio.dayChange.toLocaleString()}
+                  {portfolio.dayChange >= 0 ? '+' : ''}${portfolio.dayChange.toLocaleString()}
                 </p>
               </div>
 
@@ -199,7 +263,7 @@ const Dashboard: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Price</span>
-                  <span className="text-2xl font-bold text-white">₹{stock.price.toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-white">${stock.price.toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between items-center">

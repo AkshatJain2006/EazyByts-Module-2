@@ -7,6 +7,7 @@ import Portfolio from './components/Portfolio';
 import TradingInterface from './components/TradingInterface';
 import Analytics from './components/Analytics';
 import StockCharts from './components/StockCharts';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 const Navbar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
@@ -36,6 +37,7 @@ const Navbar: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
               <Link
                 key={item.path}
                 to={item.path}
+                replace
                 className={`px-4 py-2 rounded-xl transition-all duration-200 flex items-center space-x-2 ${
                   location.pathname === item.path
                     ? 'bg-indigo-600 text-white'
@@ -100,14 +102,14 @@ const App: React.FC = () => {
     <Router>
       <div className="min-h-screen">
         {isAuthenticated && <Navbar onLogout={handleLogout} />}
-        <Routes>
+        <Routes key={window.location.pathname}>
           <Route path="/login" element={<Login onLogin={handleLogin} />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/portfolio" element={<ProtectedRoute><Portfolio /></ProtectedRoute>} />
-          <Route path="/trading" element={<ProtectedRoute><TradingInterface /></ProtectedRoute>} />
-          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-          <Route path="/charts" element={<ProtectedRoute><StockCharts /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><ErrorBoundary key="dashboard"><Dashboard /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/portfolio" element={<ProtectedRoute><ErrorBoundary key="portfolio"><Portfolio /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/trading" element={<ProtectedRoute><ErrorBoundary key="trading"><TradingInterface /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><ErrorBoundary key="analytics"><Analytics /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/charts" element={<ProtectedRoute><ErrorBoundary key="charts"><StockCharts /></ErrorBoundary></ProtectedRoute>} />
           <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
         </Routes>
       </div>
