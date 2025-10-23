@@ -1,7 +1,7 @@
 -- Stock Market Dashboard Database Schema
 
-CREATE DATABASE IF NOT EXISTS stock_dashboard;
-USE stock_dashboard;
+CREATE DATABASE IF NOT EXISTS defaultdb;
+USE defaultdb;
 
 -- Users table
 CREATE TABLE users (

@@ -124,21 +124,23 @@ const Dashboard: React.FC = () => {
 
   // Update stocks with real-time data
   useEffect(() => {
-    setStocks(prevStocks => 
+  if (!getPrice) return;
+
+  const interval = setInterval(() => {
+    setStocks(prevStocks =>
       prevStocks.map(stock => {
         const realTimeData = getPrice(stock.symbol);
-        if (realTimeData && realTimeData.price !== stock.price) {
-          const change = realTimeData.price - stock.price;
-          return {
-            ...stock,
-            price: realTimeData.price,
-            change: change
-          };
+        if (realTimeData?.price !== undefined && realTimeData.price !== stock.price) {
+          return { ...stock, price: realTimeData.price, change: realTimeData.price - stock.price };
         }
         return stock;
       })
     );
-  }, [getPrice]);
+  }, 3000);
+
+  return () => clearInterval(interval);
+}, [getPrice]);
+
 
   const filteredStocks = stocks.filter(stock =>
     stock.symbol.toLowerCase().includes(searchTerm.toLowerCase())
