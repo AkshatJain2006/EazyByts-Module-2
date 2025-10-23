@@ -85,7 +85,7 @@ const Dashboard: React.FC = () => {
                   dayChangePercent: 2.0
                 });
               } catch (portfolioErr) {
-                // Portfolio fetch failed, use mock data
+                // Portfolio fetch failed,use mock data
                 setPortfolio(mockPortfolio);
               }
             }
