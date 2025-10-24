@@ -19,6 +19,16 @@ interface Trade {
   total: number;
 }
 
+// Mock stock data as fallback
+const mockStocks: Stock[] = [
+  { symbol: 'AAPL', price: 182.63, change: 1.25, volume: 45218900 },
+  { symbol: 'GOOGL', price: 138.21, change: -0.45, volume: 28765400 },
+  { symbol: 'MSFT', price: 407.54, change: 2.34, volume: 32198700 },
+  { symbol: 'TSLA', price: 234.78, change: -3.21, volume: 56783200 },
+  { symbol: 'AMZN', price: 174.99, change: 0.87, volume: 39876500 },
+  { symbol: 'NVDA', price: 118.11, change: 5.67, volume: 67894300 }
+];
+
 const TradingInterface: React.FC = () => {
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [selectedStock, setSelectedStock] = useState('');
@@ -30,12 +40,54 @@ const TradingInterface: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [recentTrades, setRecentTrades] = useState<Trade[]>([]);
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(10000); // Default balance
 
   const symbols = stocks.map(s => s.symbol);
   const { getPrice } = useRealTimeStocks(symbols);
 
+  // Function to fetch balance
+  const fetchBalance = async (token: string) => {
+    try {
+      const balanceResponse = await axios.get('http://localhost:5000/api/portfolio/balance', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Balance API response:', balanceResponse.data);
+      
+      if (balanceResponse.data.success) {
+        setBalance(Number(balanceResponse.data.balance) || 10000);
+      }
+    } catch (balanceError) {
+      console.error('Failed to fetch balance:', balanceError);
+      setBalance(10000); // Default balance
+    }
+  };
 
+  // Function to fetch recent trades
+  const fetchRecentTrades = async (token: string) => {
+    try {
+      const tradesResponse = await axios.get('http://localhost:5000/api/trade/history', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Trades API response:', tradesResponse.data);
+      
+      // Transform trade data to ensure proper number types
+      const tradesData = tradesResponse.data.data || tradesResponse.data || [];
+      const transformedTrades: Trade[] = tradesData.slice(0, 5).map((trade: any) => ({
+        id: trade.id?.toString() || Math.random().toString(),
+        symbol: trade.symbol || trade.stock_symbol || 'Unknown',
+        action: (trade.action || trade.transaction_type || 'buy') as 'buy' | 'sell',
+        quantity: Number(trade.quantity) || 0,
+        price: Number(trade.price) || 0,
+        timestamp: trade.timestamp || trade.created_at || new Date().toISOString(),
+        total: Number(trade.total) || Number(trade.total_amount) || 0
+      }));
+      
+      setRecentTrades(transformedTrades);
+    } catch (tradesError) {
+      console.error('Failed to fetch trades:', tradesError);
+      setRecentTrades([]);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,33 +98,42 @@ const TradingInterface: React.FC = () => {
           return;
         }
 
-        // Fetch stocks
-        const stocksResponse = await axios.get('http://localhost:5000/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA');
+        // Try to fetch real stock data, fall back to mock data if it fails
+        let fetchedStocks: Stock[] = [];
+        try {
+          const stocksResponse = await axios.get('http://localhost:5000/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA');
+          console.log('Stocks API response:', stocksResponse.data);
+          
+          if (stocksResponse.data.success) {
+            const symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'NVDA'];
+            fetchedStocks = stocksResponse.data.data.map((stock: any, index: number) => ({
+              symbol: symbols[index],
+              price: stock.c || stock.currentPrice || 0,
+              change: stock.d || stock.change || 0,
+              volume: Math.floor(Math.random() * 50000000)
+            }));
+          } else {
+            throw new Error(stocksResponse.data.message);
+          }
+        } catch (stockError) {
+          console.log('Using mock stock data due to API error:', stockError);
+          fetchedStocks = mockStocks;
+        }
         
-        // Transform Finnhub data to expected format
-        const symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'NVDA'];
-        const transformedStocks = stocksResponse.data.data.map((stock: any, index: number) => ({
-          symbol: symbols[index],
-          price: stock.c,
-          change: stock.d,
-          volume: Math.floor(Math.random() * 50000000)
-        }));
-        
-        setStocks(transformedStocks);
+        setStocks(fetchedStocks);
 
-        // Fetch portfolio for balance
-        const portfolioResponse = await axios.get('http://localhost:5000/api/portfolio', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setBalance(portfolioResponse.data.balance);
+        // Fetch balance
+        await fetchBalance(token);
 
         // Fetch recent trades
-        const tradesResponse = await axios.get('http://localhost:5000/api/trade/history', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setRecentTrades(tradesResponse.data.slice(0, 5));
+        await fetchRecentTrades(token);
+
       } catch (err: any) {
+        console.error('Failed to load data:', err);
         setError(err.response?.data?.message || 'Failed to load data');
+        // Use mock data as fallback
+        setStocks(mockStocks);
+        setBalance(10000);
       }
     };
 
@@ -93,9 +154,18 @@ const TradingInterface: React.FC = () => {
     }
 
     const tradePrice = orderType === 'market' ? selectedStockData.price : parseFloat(limitPrice);
-    const totalCost = tradePrice * quantity;
+    
+    if (orderType === 'limit' && (!limitPrice || parseFloat(limitPrice) <= 0)) {
+      setError('Please enter a valid limit price');
+      setLoading(false);
+      return;
+    }
 
-
+    if (quantity <= 0) {
+      setError('Please enter a valid quantity');
+      setLoading(false);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
@@ -105,30 +175,30 @@ const TradingInterface: React.FC = () => {
         return;
       }
 
-      const response = await axios.post('http://localhost:5000/api/trade/buy', {
+      // Use correct endpoint based on action
+      const endpoint = action === 'buy' ? 'buy' : 'sell';
+      console.log('Making trade request:', { symbol: selectedStock, quantity, price: tradePrice, action: endpoint });
+      
+      const response = await axios.post(`http://localhost:5000/api/trade/${endpoint}`, {
         symbol: selectedStock,
-        quantity,
+        quantity: quantity,
         price: tradePrice
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setSuccess(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} shares of ${selectedStock} for $${totalCost.toFixed(2)}`);
-      
-      // Refresh data
-      const portfolioResponse = await axios.get('http://localhost:5000/api/portfolio', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setBalance(portfolioResponse.data.balance);
+      console.log('Trade response:', response.data);
 
-      const tradesResponse = await axios.get('http://localhost:5000/api/trade/history', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setRecentTrades(tradesResponse.data.slice(0, 5));
+      setSuccess(`Successfully ${action === 'buy' ? 'bought' : 'sold'} ${quantity} shares of ${selectedStock} for $${(tradePrice * quantity).toFixed(2)}`);
+      
+      // Refresh balance and trades after successful trade
+      await fetchBalance(token);
+      await fetchRecentTrades(token);
       
       setQuantity(1);
       setLimitPrice('');
     } catch (err: any) {
+      console.error('Trade error:', err);
       setError(err.response?.data?.message || 'Trade failed');
     } finally {
       setLoading(false);
@@ -156,7 +226,7 @@ const TradingInterface: React.FC = () => {
               <h2 className="text-2xl font-bold text-white">Place Order</h2>
               <div className="text-right">
                 <p className="text-white/70 text-sm">Available Balance</p>
-                <p className="text-2xl font-bold text-green-400">${balance.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-green-400">${balance?.toLocaleString() || '0.00'}</p>
               </div>
             </div>
 
@@ -259,7 +329,7 @@ const TradingInterface: React.FC = () => {
                   <input
                     type="number"
                     value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
                     min="1"
                     className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Enter quantity"
@@ -279,7 +349,7 @@ const TradingInterface: React.FC = () => {
                       className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       placeholder="Enter limit price"
                       style={{ color: 'white', backgroundColor: '#1f2937' }}
-                      required
+                      required={orderType === 'limit'}
                     />
                   </div>
                 )}
@@ -349,38 +419,44 @@ const TradingInterface: React.FC = () => {
         <div className="modern-card p-6">
           <h3 className="text-xl font-semibold text-white mb-6">Recent Trades</h3>
           <div className="space-y-4">
-            {recentTrades.map((trade) => (
-              <div key={trade.id} className="bg-white/5 p-4 rounded-lg border border-white/10">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{trade.symbol}</span>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    trade.action === 'buy' 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    {trade.action.toUpperCase()}
-                  </span>
+            {recentTrades.length > 0 ? (
+              recentTrades.map((trade) => (
+                <div key={trade.id} className="bg-white/5 p-4 rounded-lg border border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white font-medium">{trade.symbol}</span>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      trade.action === 'buy' 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {trade.action.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="text-sm text-white/70 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Quantity:</span>
+                      <span>{trade.quantity} shares</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Price:</span>
+                      <span>${Number(trade.price).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total:</span>
+                      <span>${Number(trade.total).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Time:</span>
+                      <span>{new Date(trade.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm text-white/70 space-y-1">
-                  <div className="flex justify-between">
-                    <span>Quantity:</span>
-                    <span>{trade.quantity} shares</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Price:</span>
-                    <span>${trade.price.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total:</span>
-                    <span>${trade.total.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Time:</span>
-                    <span>{new Date(trade.timestamp).toLocaleTimeString()}</span>
-                  </div>
-                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-400 py-4">
+                No recent trades
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
