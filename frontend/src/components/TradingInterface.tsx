@@ -48,7 +48,8 @@ const TradingInterface: React.FC = () => {
   // Function to fetch balance
   const fetchBalance = async (token: string) => {
     try {
-      const balanceResponse = await axios.get('http://localhost:5000/api/portfolio/balance', {
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const balanceResponse = await axios.get(`${API_BASE_URL}/api/portfolio/balance`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log('Balance API response:', balanceResponse.data);
@@ -65,7 +66,8 @@ const TradingInterface: React.FC = () => {
   // Function to fetch recent trades
   const fetchRecentTrades = async (token: string) => {
     try {
-      const tradesResponse = await axios.get('http://localhost:5000/api/trade/history', {
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const tradesResponse = await axios.get(`${API_BASE_URL}/api/trade/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log('Trades API response:', tradesResponse.data);
@@ -101,7 +103,8 @@ const TradingInterface: React.FC = () => {
         // Try to fetch real stock data, fall back to mock data if it fails
         let fetchedStocks: Stock[] = [];
         try {
-          const stocksResponse = await axios.get('http://localhost:5000/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA');
+          const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+          const stocksResponse = await axios.get(`${API_BASE_URL}/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA`);
           console.log('Stocks API response:', stocksResponse.data);
           
           if (stocksResponse.data.success) {
@@ -179,7 +182,8 @@ const TradingInterface: React.FC = () => {
       const endpoint = action === 'buy' ? 'buy' : 'sell';
       console.log('Making trade request:', { symbol: selectedStock, quantity, price: tradePrice, action: endpoint });
       
-      const response = await axios.post(`http://localhost:5000/api/trade/${endpoint}`, {
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await axios.post(`${API_BASE_URL}/api/trade/${endpoint}`, {
         symbol: selectedStock,
         quantity: quantity,
         price: tradePrice
