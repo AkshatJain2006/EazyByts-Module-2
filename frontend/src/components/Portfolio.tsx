@@ -35,13 +35,15 @@ const Portfolio: React.FC = () => {
           return;
         }
 
+        const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
         // Fetch portfolio holdings
-        const portfolioResponse = await axios.get('http://localhost:5000/api/portfolio', {
+        const portfolioResponse = await axios.get(`${API_URL}/api/portfolio`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
         // Fetch balance
-        const balanceResponse = await axios.get('http://localhost:5000/api/portfolio/balance', {
+        const balanceResponse = await axios.get(`${API_URL}/api/portfolio/balance`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -57,7 +59,7 @@ const Portfolio: React.FC = () => {
           // Fetch current prices for all holdings to calculate gains/losses
           if (portfolioData.length > 0) {
             const symbols = portfolioData.map(h => h.stock_symbol);
-            const stocksResponse = await axios.get(`http://localhost:5000/api/stocks/multiple?symbols=${symbols.join(',')}`);
+            const stocksResponse = await axios.get(`${API_URL}/api/stocks/multiple?symbols=${symbols.join(',')}`);
             
             if (stocksResponse.data.success) {
               const currentPrices = stocksResponse.data.data;
