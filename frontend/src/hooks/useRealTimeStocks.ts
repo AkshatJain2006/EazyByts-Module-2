@@ -27,7 +27,6 @@ export const useRealTimeStocks = (symbols: string[] = []) => {
         
         data.forEach(update => {
           if (symbols.length === 0 || symbols.includes(update.s)) {
-            console.log(`Updating ${update.s}: $${update.p}`);
             newPrices.set(update.s, {
               symbol: update.s,
               price: update.p,

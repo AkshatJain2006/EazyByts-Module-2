@@ -52,7 +52,8 @@ const Dashboard: React.FC = () => {
         if (isMounted) {
           try {
             // Try to fetch from backend first
-            const stocksResponse = await axios.get('http://localhost:5000/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA');
+            const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+            const stocksResponse = await axios.get(`${API_BASE_URL}/api/stocks/multiple?symbols=AAPL,GOOGL,MSFT,TSLA,AMZN,NVDA`);
             
             // Transform Finnhub data to expected format
             const symbols = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'NVDA'];
@@ -70,7 +71,7 @@ const Dashboard: React.FC = () => {
             const token = localStorage.getItem('token');
             if (token) {
               try {
-                const portfolioResponse = await axios.get('http://localhost:5000/api/portfolio', {
+                const portfolioResponse = await axios.get(`${API_BASE_URL}/api/portfolio`, {
                   headers: { Authorization: `Bearer ${token}` }
                 });
                 
@@ -132,7 +133,6 @@ const Dashboard: React.FC = () => {
           const realTimeData = getPrice(stock.symbol);
           if (realTimeData?.price !== undefined && realTimeData.price !== stock.price) {
             const priceChange = realTimeData.price - stock.price;
-            console.log(`Real-time update for ${stock.symbol}: ${stock.price} -> ${realTimeData.price} (change: ${priceChange.toFixed(2)})`);
             return { 
               ...stock, 
               price: realTimeData.price, 
